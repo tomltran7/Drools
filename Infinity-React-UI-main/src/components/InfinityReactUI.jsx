@@ -34,7 +34,7 @@ import {
 const DATATYPES = ['String', 'Number', 'Boolean', 'Date'];
 const CONDITIONS = ['Equals', 'Greater Than', 'Less Than', 'Contains'];
 
-const DecisionTableIDE = ({ title: initialTitle, columns: initialColumns, rows: initialRows, setTable, testCases: initialTestCases, logChange, onExtractJson }) => {
+const DecisionTableIDE = ({ title: initialTitle, columns: initialColumns, rows: initialRows, setTable, testCases: initialTestCases, logChange, onExtractJson, onOpenXml }) => {
   // Decision Table state
   const [title, setTitle] = useState(initialTitle || 'New Decision Table');
   const [columns, setColumnsRaw] = useState(initialColumns || [
@@ -435,6 +435,19 @@ const DecisionTableIDE = ({ title: initialTitle, columns: initialColumns, rows: 
           >
             <PanelRight className="w-5 h-5" />
             <Plus className="w-3 h-3 absolute right-1 top-1 text-green-500" />
+          </button>
+          {/* XML icon: triggers parent drawer via onOpenXml prop if provided */}
+          <button
+            className="p-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center justify-center"
+            onClick={() => { if (typeof onOpenXml === 'function') onOpenXml(); }}
+            title="Open XML"
+            aria-label="Open XML"
+          >
+            {/* simple code / xml icon */}
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="16 18 22 12 16 6" />
+              <polyline points="8 6 2 12 8 18" />
+            </svg>
           </button>
         </div>
         <div className="overflow-auto">
@@ -993,6 +1006,8 @@ const InfinityReactUI = () => {
 
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [buildErrors, setBuildErrors] = useState(null);
+    // Drawer state for XML editor (open/closed)
+    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   // Decision Table editor mapped state
   const [dtColumns, setDtColumns] = useState([]);
   const [dtRows, setDtRows] = useState([]);
@@ -1101,6 +1116,7 @@ const InfinityReactUI = () => {
                 columns={dtColumns}
                 rows={dtRows}
                 setTable={({ columns, rows }) => { setDtColumns(columns); setDtRows(rows); }}
+                onOpenXml={() => setIsDrawerOpen(true)}
               />
             </div>
           </div>
@@ -1108,19 +1124,36 @@ const InfinityReactUI = () => {
 
         {(modelId && selectedDecision) && (
           <div>
-            <label className="block text-sm font-medium mb-2">Decision Table XML</label>
-            <div className="border rounded">
-              <React.Suspense fallback={<div className="p-4 text-sm text-gray-500">Loading editor…</div>}>
-                <MonacoEditor
-                  height="320px"
-                  defaultLanguage="xml"
-                  theme="vs-light"
-                  value={decisionXml}
-                  onChange={(val) => setDecisionXml(val)}
-                  options={{ automaticLayout: true, wordWrap: 'on', minimap: { enabled: false } }}
-                />
-              </React.Suspense>
-            </div>
+            {/* Note: XML open is triggered from the DecisionTableIDE XML icon next to Add Column */}
+
+            {/* Drawer: mounts Monaco lazily only when opened (anchored left) */}
+            {isDrawerOpen && (
+              <div className="fixed inset-0 z-50 flex">
+                {/* Overlay */}
+                <div className="absolute inset-0 bg-black bg-opacity-40" onClick={() => setIsDrawerOpen(false)} />
+                {/* Left-side Panel */}
+                <div className="relative mr-auto h-full bg-white shadow-xl" style={{ width: 'min(900px, 100%)' }}>
+                  <div className="flex items-center justify-between p-4 border-b">
+                    <div className="text-sm font-medium">{selectedDecision} — Decision Table XML</div>
+                    <div className="flex items-center gap-2">
+                      <button className="px-3 py-1 bg-gray-100 rounded text-sm" onClick={() => setIsDrawerOpen(false)}>Close</button>
+                    </div>
+                  </div>
+                  <div className="p-4 h-[calc(100vh-80px)] overflow-auto">
+                    <React.Suspense fallback={<div className="p-4 text-sm text-gray-500">Loading editor…</div>}>
+                      <MonacoEditor
+                        height="100%"
+                        defaultLanguage="xml"
+                        theme="vs-light"
+                        value={decisionXml}
+                        onChange={(val) => setDecisionXml(val)}
+                        options={{ automaticLayout: true, wordWrap: 'on', minimap: { enabled: false } }}
+                      />
+                    </React.Suspense>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
