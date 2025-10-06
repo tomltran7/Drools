@@ -1943,23 +1943,10 @@ const InfinityReactUI = () => {
                         </div>
 
                         {modelsForRepo.length > 0 ? (
-                          <DecisionTableIDE
-                            key={(() => {
-                              const model = modelsForRepo[activeModelIdx];
-                              const str = JSON.stringify({
-                                columns: model.columns,
-                                rows: model.rows,
-                                testCases: model.testCases
-                              });
-                              return model.id + '-' + hashCode(str);
-                            })()}
-                            title={modelsForRepo[activeModelIdx].title}
-                            columns={modelsForRepo[activeModelIdx].columns}
-                            rows={modelsForRepo[activeModelIdx].rows}
-                            testCases={modelsForRepo[activeModelIdx].testCases}
-                            setTable={updated => updateModel(activeModelIdx, updated)}
-                            logChange={logChange}
-                          />
+                          <div className="p-4 border rounded bg-white">
+                            <h3 className="font-semibold text-sm">{modelsForRepo[activeModelIdx].title}</h3>
+                            <div className="text-xs text-gray-600">Columns: {modelsForRepo[activeModelIdx].columns.length} · Rows: {modelsForRepo[activeModelIdx].rows.length}</div>
+                          </div>
                         ) : (
                           <div className="p-8 text-gray-500">No models for this repository. Add a model to begin.</div>
                         )}
