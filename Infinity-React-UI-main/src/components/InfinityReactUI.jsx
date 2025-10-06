@@ -367,16 +367,7 @@ const DecisionTableIDE = ({ title: initialTitle, columns: initialColumns, rows: 
     }
 
     const merged = [...pos, ...neg];
-    const persisted = merged.map(tc => ({ ...tc, result: null, status: null }));
-    setTestCases(persisted);
-    // Persist generated suite to parent model so it survives reloads
-    if (typeof setTable === 'function') {
-      try {
-        setTable({ columns, rows, testCases: persisted });
-      } catch (e) {
-        console.warn('Failed to persist generated test suite to parent model', e);
-      }
-    }
+    setTestCases(merged.map(tc => ({ ...tc, result: null, status: null })));
   };
 
   // Update test case
@@ -988,6 +979,7 @@ const InfinityReactUI = () => {
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [buildErrors, setBuildErrors] = useState(null);
   // Decision Table editor mapped state
+  const [showDTEditor, setShowDTEditor] = useState(false);
   const [dtColumns, setDtColumns] = useState([]);
   const [dtRows, setDtRows] = useState([]);
 
@@ -1000,10 +992,7 @@ const InfinityReactUI = () => {
       setConfirmOpen(false);
       setSaving(true);
       try {
-  // include testCases from the selected in-memory model (if any)
-  const currentModel = modelsForRepo[activeModelIdx];
-  const modelTestCases = currentModel ? currentModel.testCases : undefined;
-  const res = await droolsApi.updateDecisionTable(modelId, selectedDecision, decisionXml, modelTestCases);
+  const res = await droolsApi.updateDecisionTable(modelId, selectedDecision, decisionXml);
         setMessage({ type: 'success', text: 'Saved successfully' });
         // If KIE build reported errors, surface them
         if (res && res.build_failed) {
@@ -1105,19 +1094,13 @@ const InfinityReactUI = () => {
             <button className="px-3 py-1 bg-indigo-600 text-white rounded text-sm" onClick={() => setShowDTEditor(s => !s)}>
               {showDTEditor ? 'Hide Table Editor' : 'Open Table Editor'}
             </button>
-                {showDTEditor && (
+            {showDTEditor && (
               <div className="mt-4">
                 <DecisionTableIDE
                   title={selectedDecision || 'Decision Table'}
                   columns={dtColumns}
                   rows={dtRows}
-                  testCases={modelsForRepo[activeModelIdx]?.testCases}
-                  setTable={({ columns, rows, testCases }) => {
-                    setDtColumns(columns);
-                    setDtRows(rows);
-                    // persist into parent model state
-                    updateModel(activeModelIdx, { columns, rows, testCases: typeof testCases !== 'undefined' ? testCases : modelsForRepo[activeModelIdx]?.testCases });
-                  }}
+                  setTable={({ columns, rows }) => { setDtColumns(columns); setDtRows(rows); }}
                 />
               </div>
             )}
@@ -1236,7 +1219,186 @@ const InfinityReactUI = () => {
   const [editorMode, setEditorMode] = useState('table');
   const [ruleEditorOpen, setRuleEditorOpen] = useState(false);
   // Models (Decision Tables) with repo property
-  const [models, setModels] = useState([]);
+  const [models, setModels] = useState([
+    {
+      id: 1,
+      title: 'Authorization Indicator Check',
+      repo: 'Authorization_CSBD_DMN',
+      columns: [
+        { name: 'Authorization Indicator', type: 'String', condition: 'Equals' },
+        { name: 'UM Core Edit', type: 'Boolean', condition: 'Equals' },
+        { name: 'Result', type: 'String', condition: 'Equals' }
+      ],
+      rows: [
+        ['Y', 'TRUE', 'Proceed to Claim Level Bypass Check'],
+        ['-', '-', 'No action specified'],
+      ],
+      testCases: [
+        {
+          inputs: ['Y', 'TRUE'],
+          expected: 'Proceed to Claim Level Bypass Check',
+          description: 'Should proceed to Claim Level Bypass Check when Authorization Indicator is Y and UM Core Edit is TRUE'
+        },
+        {
+          inputs: ['-', '-'],
+          expected: 'No action specified',
+          description: 'Should return No action specified when Authorization Indicator and UM Core Edit are not set'
+        },
+        {
+          inputs: ['N', 'FALSE'],
+          expected: 'No action specified',
+          description: 'Should return No action specified when Authorization Indicator is N and UM Core Edit is FALSE'
+        }
+      ],
+      changeLog: [
+        {
+          timestamp: '2025-09-28T10:00:00Z',
+          title: 'Initial creation of Authorization Indicator Check',
+          columns: [
+            { name: 'Authorization Indicator', type: 'String', condition: 'Equals' },
+            { name: 'UM Core Edit', type: 'Boolean', condition: 'Equals' },
+            { name: 'Result', type: 'String', condition: 'Equals' }
+          ],
+          rows: [
+            ['Y', 'TRUE', 'Proceed to Claim Level Bypass Check'],
+            ['-', '-', 'No action specified'],
+          ],
+          testCases: []
+        },
+        {
+          timestamp: '2025-09-29T09:00:00Z',
+          title: 'Added functional test cases',
+          columns: [
+            { name: 'Authorization Indicator', type: 'String', condition: 'Equals' },
+            { name: 'UM Core Edit', type: 'Boolean', condition: 'Equals' },
+            { name: 'Result', type: 'String', condition: 'Equals' }
+          ],
+          rows: [
+            ['Y', 'TRUE', 'Proceed to Claim Level Bypass Check'],
+            ['-', '-', 'No action specified'],
+          ],
+          testCases: [
+            {
+              inputs: ['Y', 'TRUE'],
+              expected: 'Proceed to Claim Level Bypass Check',
+              description: 'Should proceed to Claim Level Bypass Check when Authorization Indicator is Y and UM Core Edit is TRUE'
+            },
+            {
+              inputs: ['-', '-'],
+              expected: 'No action specified',
+              description: 'Should return No action specified when Authorization Indicator and UM Core Edit are not set'
+            },
+            {
+              inputs: ['N', 'FALSE'],
+              expected: 'No action specified',
+              description: 'Should return No action specified when Authorization Indicator is N and UM Core Edit is FALSE'
+            }
+          ]
+        }
+      ],
+    },
+    {
+      id: 2,
+      title: 'Claim Level Bypass Check',
+      repo: 'Authorization_CSBD_DMN',
+      columns: [
+        { name: 'Authorization Indicator Check.Result', type: 'String', condition: 'Equals' },
+        { name: 'List Contains ("Hospital based Phys")', type: 'Boolean', condition: 'Equals' },
+        { name: 'Result', type: 'String', condition: 'Equals' }
+      ],
+      rows: [
+        ['Proceed to Claim Level Bypass Check', 'TRUE', 'Bypass UM due to Hospital based physician and apply member benefits'],
+        ['Proceed to Claim Level Bypass Check', 'FALSE', 'Proceed to Line Level Bypass Check'],
+        ['-', '-', 'No Rule Matched']
+      ],
+      testCases: [
+        {
+          inputs: ['Proceed to Claim Level Bypass Check', 'TRUE'],
+          expected: 'Bypass UM due to Hospital based physician and apply member benefits',
+          description: 'Should bypass UM for hospital-based physician when condition is TRUE.'
+        },
+        {
+          inputs: ['Proceed to Claim Level Bypass Check', 'FALSE'],
+          expected: 'Proceed to Line Level Bypass Check',
+          description: 'Should proceed to line level bypass check when condition is FALSE.'
+        },
+        {
+          inputs: ['-', '-'],
+          expected: 'No Rule Matched',
+          description: 'Should return No Rule Matched for default case.'
+        }
+      ],
+      changeLog: []
+    },
+    {
+      id: 3,
+      title: 'Line Level Bypass Check',
+      repo: 'Authorization_CSBD_DMN',
+      columns: [
+        { name: 'Claim Level Bypass Check.Result', type: 'String', condition: 'Equals' },
+        { name: '(list contains(Claim Level Bypass Check.Data.Line.modifierCode , "26")) and not (list contains(Claim Level Bypass Check.Data.Line.modifierCode , "TC")', type: 'Boolean', condition: 'Equals' },
+        { name: '(list contains(Claim Level Bypass Check.Data.Line.businessLabel, lower case("Prior Auth Pass"))) and (Claim Level Bypass Check.Data.Line.preAuthorizationPassIndicator = "Y")', type: 'Boolean', condition: 'Equals' },
+        { name: '(list contains(Claim Level Bypass Check.Data.Line.businessLabel, lower case("Possible Prior Auth Pass"))) and not(list contains(Claim Level Bypass Check.Data.Line.businessLabel, lower case("UM denied case")))  and  (Claim Level Bypass Check.Data.Line.preAuthorizationPassIndicator = "Y")', type: 'Boolean', condition: 'Equals' },
+        { name: 'Result', type: 'String', condition: 'Equals' }
+      ],
+      rows: [
+        ['Proceed to Claim Level Bypass Check', 'TRUE', '-','-','Bypass UM, per modifier 26 and apply member benefits'],
+        ['Proceed to Claim Level Bypass Check', '-', 'TRUE','-','Bypass UM, per prior auth pass program and apply member benefits'],
+        ['Proceed to Claim Level Bypass Check', '-', '-','TRUE','Bypass UM, per prior auth pass program and apply member benefits'],
+        ['Proceed to Claim Level Bypass Check', '-', '-','-','No recommendation from Infinity'],
+        ['-','-','-', '-', 'No Rule Matched']
+      ],
+      testCases: [
+        {
+          inputs: ['Proceed to Claim Level Bypass Check', 'TRUE', '-', '-',],
+          expected: 'Bypass UM, per modifier 26 and apply member benefits',
+          description: 'Should bypass UM for modifier 26 when condition is TRUE.'
+        },
+        {
+          inputs: ['Proceed to Claim Level Bypass Check', '-', 'TRUE', '-',],
+          expected: 'Bypass UM, per prior auth pass program and apply member benefits',
+          description: 'Should bypass UM for prior auth pass program when second condition is TRUE.'
+        },
+        {
+          inputs: ['Proceed to Claim Level Bypass Check', '-', '-', 'TRUE',],
+          expected: 'Bypass UM, per prior auth pass program and apply member benefits',
+          description: 'Should bypass UM for possible prior auth pass program when third condition is TRUE.'
+        },
+        {
+          inputs: ['Proceed to Claim Level Bypass Check', '-', '-', '-',],
+          expected: 'No recommendation from Infinity',
+          description: 'Should return No recommendation from Infinity for unmatched conditions.'
+        },
+        {
+          inputs: ['-', '-', '-', '-',],
+          expected: 'No Rule Matched',
+          description: 'Should return No Rule Matched for default case.'
+        }
+      ],
+      changeLog: []
+    },
+    {
+      id: 4,
+      title: 'Recommendation',
+      repo: 'Authorization_CSBD_DMN',
+      columns: [
+        { name: 'Authorization Indicator Check.Result', type: 'String', condition: 'Equals' },
+        { name: 'Claim Level Bypass Check.Result', type: 'String', condition: 'Equals' },
+        { name: 'Line Level Bypass Check.Result', type: 'String', condition: 'Equals' },
+        { name: 'Message', type: 'String', condition: 'Equals' },
+        { name: 'Decision', type: 'String', condition: 'Equals' },
+      ],
+      rows: [
+        ['No action specified','-','-','No UM required at line level','Bypass'],
+        ['-', 'Bypass UM due to Hospital based physician and apply member benefits', '-','Bypass UM due to Hospital based physician and apply member benefits','ClaimLevelBypass'],
+        ['-', '-','Bypass UM, per modifier 26 and apply member benefits','Bypass UM, per modifier 26 and apply member benefits','Bypass'],
+        ['-','-','Bypass UM, per prior auth pass program and apply member benefits','Bypass UM, per prior auth pass program and apply member benefits','Bypass'],
+        ['-','-','-', 'No recommendation from Infinity','Manual']
+      ],
+      testCases: [],
+      changeLog: []
+    }
+  ]);
   // Change log for each model
   const [activeModelIdx, setActiveModelIdx] = useState(0);
   // Only show models for selected repo in editor
