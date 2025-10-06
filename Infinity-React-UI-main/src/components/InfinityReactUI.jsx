@@ -979,7 +979,6 @@ const InfinityReactUI = () => {
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [buildErrors, setBuildErrors] = useState(null);
   // Decision Table editor mapped state
-  const [showDTEditor, setShowDTEditor] = useState(false);
   const [dtColumns, setDtColumns] = useState([]);
   const [dtRows, setDtRows] = useState([]);
 
@@ -1091,19 +1090,15 @@ const InfinityReactUI = () => {
         )}
         {parsed && (
           <div className="mt-3">
-            <button className="px-3 py-1 bg-indigo-600 text-white rounded text-sm" onClick={() => setShowDTEditor(s => !s)}>
-              {showDTEditor ? 'Hide Table Editor' : 'Open Table Editor'}
-            </button>
-            {showDTEditor && (
-              <div className="mt-4">
-                <DecisionTableIDE
-                  title={selectedDecision || 'Decision Table'}
-                  columns={dtColumns}
-                  rows={dtRows}
-                  setTable={({ columns, rows }) => { setDtColumns(columns); setDtRows(rows); }}
-                />
-              </div>
-            )}
+            {/* Always show the Decision Table editor when a decision is parsed */}
+            <div className="mt-4">
+              <DecisionTableIDE
+                title={selectedDecision || 'Decision Table'}
+                columns={dtColumns}
+                rows={dtRows}
+                setTable={({ columns, rows }) => { setDtColumns(columns); setDtRows(rows); }}
+              />
+            </div>
           </div>
         )}
 
@@ -1217,7 +1212,7 @@ const InfinityReactUI = () => {
   const [commitDescription, setCommitDescription] = useState('');
   // Editor mode: 'table' for Decision Table IDE, 'dmn' for DMN IDE
   const [editorMode, setEditorMode] = useState('table');
-  const [ruleEditorOpen, setRuleEditorOpen] = useState(false);
+  // Rule editor is always shown when present (toggle removed)
   // Models (Decision Tables) with repo property
   const [models, setModels] = useState([
     {
@@ -1959,22 +1954,14 @@ const InfinityReactUI = () => {
                       />
                     )}
 
-                    {/* Rule Editor Modal / Panel toggle */}
-                    <div className="mt-3">
-                      <button
-                        className="px-3 py-1 rounded bg-indigo-600 text-white text-sm"
-                        onClick={() => setRuleEditorOpen(open => !open)}
-                      >{ruleEditorOpen ? 'Close Rule Editor' : 'Open Rule Editor'}</button>
+                    {/* Rule Editor panel - always visible */}
+                    <div className="mt-4">
+                      <RuleEditor
+                        onSaved={(msg) => {
+                          alert('Rule saved: ' + JSON.stringify(msg));
+                        }}
+                      />
                     </div>
-                    {ruleEditorOpen && (
-                      <div className="mt-4">
-                        <RuleEditor
-                          onSaved={(msg) => {
-                            alert('Rule saved: ' + JSON.stringify(msg));
-                          }}
-                        />
-                      </div>
-                    )}
                   </div>
                   {/* Copilot Assistant Sidebar - Resizable */}
                   <div style={{ display: 'flex', height: '100%' }}>
