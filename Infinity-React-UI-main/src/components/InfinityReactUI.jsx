@@ -908,7 +908,21 @@ const InfinityReactUI = () => {
 
     // If parent passes a modelName prop, sync it into local modelId state
     useEffect(() => {
-      if (initialModelName) setModelId(initialModelName);
+      // Always sync the incoming modelName prop into local state.
+      // Previously we only updated when it was truthy which left the old
+      // modelId when the parent cleared it — causing the RuleEditor to keep
+      // showing the previous decision when repos/models changed.
+      const newModelId = initialModelName || '';
+      setModelId(newModelId);
+      // If parent cleared the model (empty), clear decision-specific state so
+      // the editor does not keep showing the previous decision XML or parsed data.
+      if (!newModelId) {
+        setDecisionXml('');
+        setParsed(null);
+        setTables([]);
+        setSelectedDecision(null);
+        setModelSchema(null);
+      }
     }, [initialModelName]);
 
     // Fetch decision tables and model schema whenever modelId changes
@@ -1092,21 +1106,23 @@ const InfinityReactUI = () => {
           </div>
         )}
 
-        <div>
-          <label className="block text-sm font-medium mb-2">Decision Table XML</label>
-          <div className="border rounded">
-            <React.Suspense fallback={<div className="p-4 text-sm text-gray-500">Loading editor…</div>}>
-              <MonacoEditor
-                height="320px"
-                defaultLanguage="xml"
-                theme="vs-light"
-                value={decisionXml}
-                onChange={(val) => setDecisionXml(val)}
-                options={{ automaticLayout: true, wordWrap: 'on', minimap: { enabled: false } }}
-              />
-            </React.Suspense>
+        {(modelId && selectedDecision) && (
+          <div>
+            <label className="block text-sm font-medium mb-2">Decision Table XML</label>
+            <div className="border rounded">
+              <React.Suspense fallback={<div className="p-4 text-sm text-gray-500">Loading editor…</div>}>
+                <MonacoEditor
+                  height="320px"
+                  defaultLanguage="xml"
+                  theme="vs-light"
+                  value={decisionXml}
+                  onChange={(val) => setDecisionXml(val)}
+                  options={{ automaticLayout: true, wordWrap: 'on', minimap: { enabled: false } }}
+                />
+              </React.Suspense>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="flex items-center gap-2">
           <button className="px-4 py-2 bg-blue-600 text-white rounded" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</button>
@@ -1211,6 +1227,14 @@ const InfinityReactUI = () => {
   const [selectedTopLevelDecision, setSelectedTopLevelDecision] = useState('');
 
   useEffect(() => {
+    // Only load DMN models from the backend for the Authorization_CSBD_DMN repo.
+    // For other repos keep the list empty so the top-level model/decision
+    // dropdowns don't show models from a different repo.
+    if (selectedRepo !== 'Authorization_CSBD_DMN') {
+      setBackendModelsList([]);
+      setSelectedBackendModelId('');
+      return;
+    }
     // load DMN models from backend for the shared dropdown
     droolsApi.listModels().then(models => {
       setBackendModelsList(models || []);
@@ -1219,7 +1243,16 @@ const InfinityReactUI = () => {
         setSelectedBackendModelId(m.namespace ? `${m.name}::${m.namespace}` : m.name);
       }
     }).catch(err => console.error('Failed to list DMN models for top-level dropdown', err));
-  }, []);
+  }, [selectedRepo]);
+
+  // When the selected repository changes, clear the top-level model/decision
+  // selections to avoid showing decision tables from a previous repo.
+  useEffect(() => {
+    setSelectedBackendModelId('');
+    setBackendModelsList([]);
+    setTopLevelDecisions([]);
+    setSelectedTopLevelDecision('');
+  }, [selectedRepo]);
 
   // Fetch decision names for the currently selected backend model so we can show a duplicate dropdown
   useEffect(() => {
