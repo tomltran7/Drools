@@ -881,12 +881,16 @@ const DMNIDE = ({ model, setModel, logChange }) => {
 
 const InfinityReactUI = () => {
   // RuleEditor component: list/load/edit/save decision tables for a model
-  const RuleEditor = ({ modelName: initialModelName, onSaved }) => {
+  const RuleEditor = ({ modelName: initialModelName, onSaved, selectedDecisionProp }) => {
     const [modelsList, setModelsList] = useState([]);
     // modelId is the composite identifier used for API calls: name::namespace
-    const [modelId, setModelId] = useState(initialModelName || '');
+  const [modelId, setModelId] = useState(initialModelName || '');
     const [tables, setTables] = useState([]);
     const [selectedDecision, setSelectedDecision] = useState(null);
+    // If parent passes a selected decision prop, it should control which decision is selected
+    useEffect(() => {
+      if (selectedDecisionProp) setSelectedDecision(selectedDecisionProp);
+    }, [selectedDecisionProp]);
     const [decisionXml, setDecisionXml] = useState('');
     const [parsed, setParsed] = useState(null);
   const [modelSchema, setModelSchema] = useState(null);
@@ -895,20 +899,17 @@ const InfinityReactUI = () => {
     const [message, setMessage] = useState(null);
 
     // Load DMN models from backend when component mounts
+    // Initialize models list for decision selection and pick initial modelId from prop
     useEffect(() => {
       droolsApi.listModels().then(models => {
         setModelsList(models || []);
-        // If initialModelName is not provided, pick the first model (composite id)
-        if (!initialModelName && models && models.length > 0) {
-          const m = models[0];
-          setModelId(m.namespace ? `${m.name}::${m.namespace}` : m.name);
-        } else if (initialModelName) {
-          setModelId(initialModelName);
-        }
-      }).catch(err => {
-        console.error('Failed to list DMN models', err);
-      });
+      }).catch(err => console.error('Failed to list DMN models inside RuleEditor', err));
     }, []);
+
+    // If parent passes a modelName prop, sync it into local modelId state
+    useEffect(() => {
+      if (initialModelName) setModelId(initialModelName);
+    }, [initialModelName]);
 
     // Fetch decision tables and model schema whenever modelId changes
     useEffect(() => {
@@ -1024,12 +1025,7 @@ const InfinityReactUI = () => {
       <div className="space-y-3">
         <div className="flex items-center gap-3">
           <label className="text-sm font-medium">Model</label>
-          <select className="border rounded px-2 py-1 font-mono" value={modelId || ''} onChange={e => setModelId(e.target.value)}>
-            {(modelsList || []).map(m => {
-              const id = m.namespace ? `${m.name}::${m.namespace}` : m.name;
-              return <option key={id} value={id}>{m.name}{m.namespace ? ` (${m.namespace})` : ''}</option>;
-            })}
-          </select>
+          <div className="border rounded px-2 py-1 font-mono text-sm bg-gray-50">{modelId || '—'}</div>
           <label className="text-sm font-medium">Decision</label>
           <select className="border rounded px-2 py-1" value={selectedDecision || ''} onChange={e => setSelectedDecision(e.target.value)}>
             {(tables || []).map(t => <option key={t.name} value={t.name}>{t.name}{t.hasDecisionTable ? '' : ' (no table)'}</option>)}
@@ -1213,6 +1209,42 @@ const InfinityReactUI = () => {
   // Editor mode: 'table' for Decision Table IDE, 'dmn' for DMN IDE
   const [editorMode, setEditorMode] = useState('table');
   // Rule editor is always shown when present (toggle removed)
+  // Backend DMN models list (from drools API) and selected model id
+  const [backendModelsList, setBackendModelsList] = useState([]);
+  const [selectedBackendModelId, setSelectedBackendModelId] = useState('');
+  // Top-level decisions for the selected backend model and selection
+  const [topLevelDecisions, setTopLevelDecisions] = useState([]);
+  const [selectedTopLevelDecision, setSelectedTopLevelDecision] = useState('');
+
+  useEffect(() => {
+    // load DMN models from backend for the shared dropdown
+    droolsApi.listModels().then(models => {
+      setBackendModelsList(models || []);
+      if ((!selectedBackendModelId || selectedBackendModelId === '') && models && models.length > 0) {
+        const m = models[0];
+        setSelectedBackendModelId(m.namespace ? `${m.name}::${m.namespace}` : m.name);
+      }
+    }).catch(err => console.error('Failed to list DMN models for top-level dropdown', err));
+  }, []);
+
+  // Fetch decision names for the currently selected backend model so we can show a duplicate dropdown
+  useEffect(() => {
+    if (!selectedBackendModelId) {
+      setTopLevelDecisions([]);
+      setSelectedTopLevelDecision('');
+      return;
+    }
+    droolsApi.listDecisionTables(selectedBackendModelId).then(list => {
+      setTopLevelDecisions(list || []);
+      if ((!selectedTopLevelDecision || selectedTopLevelDecision === '') && list && list.length > 0) {
+        setSelectedTopLevelDecision(list[0].name);
+      }
+    }).catch(err => {
+      console.error('Failed to list decision tables for top-level dropdown', err);
+      setTopLevelDecisions([]);
+      setSelectedTopLevelDecision('');
+    });
+  }, [selectedBackendModelId]);
   // Models (Decision Tables) with repo property
   const [models, setModels] = useState([
     {
@@ -1913,28 +1945,50 @@ const InfinityReactUI = () => {
                           <span className="font-medium text-gray-700">Models:</span>
                           <select
                             className="border rounded px-2 py-1 text-sm"
-                            value={activeModelIdx}
-                            onChange={e => setActiveModelIdx(Number(e.target.value))}
+                            value={selectedBackendModelId}
+                            onChange={e => {
+                              const val = e.target.value;
+                              setSelectedBackendModelId(val);
+                              // when backend model changes, try to sync to a local model index if names match
+                              const nameOnly = typeof val === 'string' && val.includes('::') ? val.split('::')[0] : val;
+                              const idx = modelsForRepo.findIndex(m => m.title === nameOnly || m.title === val || `${m.title}::${m.repo}` === val);
+                              if (idx >= 0) setActiveModelIdx(idx);
+                            }}
                           >
-                            {modelsForRepo.map((model, idx) => (
-                              <option key={model.id} value={idx}>{model.title}</option>
-                            ))}
+                            {backendModelsList.map(m => {
+                              const id = m.namespace ? `${m.name}::${m.namespace}` : m.name;
+                              return <option key={id} value={id}>{m.name}{m.namespace ? ` (${m.namespace})` : ''}</option>;
+                            })}
                           </select>
-                          <button
-                            className="p-2 bg-gray-200 text-gray-700 rounded flex items-center justify-center hover:bg-gray-300"
-                            onClick={addModel}
-                            title="Add Model"
-                          >
-                            <Plus className="w-5 h-5" />
-                          </button>
-                          <button
-                            className="p-2 bg-gray-200 text-gray-700 rounded flex items-center justify-center hover:bg-gray-300"
-                            onClick={destroyModel}
-                            disabled={modelsForRepo.length <= 1}
-                            title="Destroy Model"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
+                          {/* Duplicate Decision dropdown (top-level) with Decision Label */}
+                          <label className="flex items-center gap-2">
+                            <span className="text-sm text-gray-700">Decision</span>
+                            <select
+                              className="border rounded px-2 py-1 text-sm"
+                              value={selectedTopLevelDecision}
+                              onChange={e => setSelectedTopLevelDecision(e.target.value)}
+                            >
+                              {topLevelDecisions.map(d => <option key={d.name} value={d.name}>{d.name}</option>)}
+                            </select>
+                          </label>
+                          {/* Add/Destroy buttons moved to the right of the decision dropdown */}
+                          <div className="ml-4 flex items-center gap-2">
+                            <button
+                              className="p-2 bg-gray-200 text-gray-700 rounded flex items-center justify-center hover:bg-gray-300"
+                              onClick={addModel}
+                              title="Add Model"
+                            >
+                              <Plus className="w-5 h-5" />
+                            </button>
+                            <button
+                              className="p-2 bg-gray-200 text-gray-700 rounded flex items-center justify-center hover:bg-gray-300"
+                              onClick={destroyModel}
+                              disabled={modelsForRepo.length <= 1}
+                              title="Destroy Model"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
                         </div>
 
                         {modelsForRepo.length > 0 ? (
@@ -1957,6 +2011,8 @@ const InfinityReactUI = () => {
                     {/* Rule Editor panel - always visible */}
                     <div className="mt-4">
                       <RuleEditor
+                        modelName={selectedBackendModelId}
+                        selectedDecisionProp={selectedTopLevelDecision}
                         onSaved={(msg) => {
                           alert('Rule saved: ' + JSON.stringify(msg));
                         }}
