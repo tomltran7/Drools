@@ -1024,13 +1024,7 @@ const InfinityReactUI = () => {
     return (
       <div className="space-y-3">
         <div className="flex items-center gap-3">
-          <label className="text-sm font-medium">Model</label>
-          <div className="border rounded px-2 py-1 font-mono text-sm bg-gray-50">{modelId || '—'}</div>
-          <label className="text-sm font-medium">Decision</label>
-          <select className="border rounded px-2 py-1" value={selectedDecision || ''} onChange={e => setSelectedDecision(e.target.value)}>
-            {(tables || []).map(t => <option key={t.name} value={t.name}>{t.name}{t.hasDecisionTable ? '' : ' (no table)'}</option>)}
-          </select>
-          <button className="px-3 py-1 bg-green-600 text-white rounded" onClick={() => { if (selectedDecision) { droolsApi.getDecisionTable(modelId, selectedDecision).then(d => { setDecisionXml(d.decisionTableXml||''); setParsed(d.parsed||null); setMessage({type:'info', text:'Reloaded'}); }).catch(e=>setMessage({type:'error', text:e.message})); } }}>Reload</button>
+          {/* Model/Decision are selected via the top-level dropdown; no read-only display here */}
         </div>
 
         {loading && <div className="text-sm text-gray-500">Loading...</div>}
