@@ -1980,7 +1980,7 @@ const InfinityReactUI = () => {
                       >{ruleEditorOpen ? 'Close Rule Editor' : 'Open Rule Editor'}</button>
                     </div>
                     {ruleEditorOpen && (
-                      <div className="mt-4 p-4 bg-white border rounded shadow">
+                      <div className="mt-4">
                         <RuleEditor
                           onSaved={(msg) => {
                             alert('Rule saved: ' + JSON.stringify(msg));
