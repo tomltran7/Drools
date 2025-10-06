@@ -2018,12 +2018,7 @@ const InfinityReactUI = () => {
                           </div>
                         </div>
 
-                        {modelsForRepo.length > 0 ? (
-                          <div className="p-4 border rounded bg-white">
-                            <h3 className="font-semibold text-sm">{modelsForRepo[activeModelIdx].title}</h3>
-                            <div className="text-xs text-gray-600">Columns: {modelsForRepo[activeModelIdx].columns.length} · Rows: {modelsForRepo[activeModelIdx].rows.length}</div>
-                          </div>
-                        ) : (
+                        {modelsForRepo.length > 0 ? null : (
                           <div className="p-8 text-gray-500">No models for this repository. Add a model to begin.</div>
                         )}
                       </>
