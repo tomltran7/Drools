@@ -1,4 +1,5 @@
+com/infinity/controller/DecisionController$1.class
 com/infinity/controller/config/DroolsConfig.class
-com/infinity/controller/AuthorizationCsbdDmnApplication.class
 com/infinity/controller/config/WebConfig.class
+com/infinity/controller/AuthorizationCsbdDmnApplication.class
 com/infinity/controller/DecisionController.class

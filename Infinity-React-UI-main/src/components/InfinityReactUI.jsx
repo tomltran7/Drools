@@ -451,8 +451,10 @@ const DecisionTableIDE = ({ title: initialTitle, columns: initialColumns, rows: 
           </button>
         </div>
         <div className="overflow-auto">
-          <DragDropContext onDragEnd={onDragEnd}>
-            <table className="min-w-full border text-sm">
+          {/* horizontal scroll wrapper prevents the table from forcing the entire layout wider than the viewport */}
+          <div className="w-full overflow-x-auto">
+            <DragDropContext onDragEnd={onDragEnd}>
+              <table className="min-w-max border text-sm table-auto">
               <thead>
                 <tr>
                   <th className="border p-2 bg-gray-100 w-10 text-center">#</th>
@@ -460,7 +462,8 @@ const DecisionTableIDE = ({ title: initialTitle, columns: initialColumns, rows: 
                     <th key={colIdx} className="border p-2 bg-gray-100">
                       <div className="flex flex-col items-center justify-center">
                         <input
-                          className="w-24 border rounded px-1 mb-1 text-center"
+                          className="max-w-[160px] w-full border rounded px-1 mb-1 text-center truncate"
+                          style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}
                           value={col.name}
                           onChange={e => updateColumn(colIdx, 'name', e.target.value)}
                         />
@@ -519,7 +522,8 @@ const DecisionTableIDE = ({ title: initialTitle, columns: initialColumns, rows: 
                                     if (!inputRefs.current[rowIdx]) inputRefs.current[rowIdx] = [];
                                     inputRefs.current[rowIdx][colIdx] = el;
                                   }}
-                                  className="w-full border rounded px-1 bg-transparent focus:bg-white"
+                                  className="max-w-[220px] w-full border rounded px-1 bg-transparent focus:bg-white truncate"
+                                  style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}
                                   value={cell}
                                   onChange={e => updateCell(rowIdx, colIdx, e.target.value)}
                                   onKeyDown={e => handleCellKeyDown(e, rowIdx, colIdx)}
@@ -540,6 +544,7 @@ const DecisionTableIDE = ({ title: initialTitle, columns: initialColumns, rows: 
               </Droppable>
             </table>
           </DragDropContext>
+          </div>
         </div>
         {/* Enhanced Testing Area */}
         <div className="mt-8 border-t pt-6">
@@ -1798,8 +1803,8 @@ const InfinityReactUI = () => {
           )}
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col">
+  {/* Main Content */}
+  <div className="flex-1 flex flex-col min-w-0">
           {activePage === 'peerReview' ? (
             <div className="flex-1 bg-white overflow-auto">
               <div className="p-4">

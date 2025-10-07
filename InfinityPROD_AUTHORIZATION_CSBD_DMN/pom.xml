@@ -210,4 +210,14 @@
       </plugin>
     </plugins>
   </build>
+    <profiles>
+    <!-- Default profile for Authorization CSBD service -->
+    <profile>
+      <id>auth-csbd-service</id>
+      <properties>
+        <server.port>8081</server.port>
+        <spring.profiles.active>auth-csbd-service</spring.profiles.active>
+      </properties>
+    </profile>
+  </profiles>
 </project>
