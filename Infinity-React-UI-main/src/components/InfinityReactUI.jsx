@@ -1058,7 +1058,7 @@ const InfinityReactUI = () => {
 
         {loading && <div className="text-sm text-gray-500">Loading...</div>}
 
-        {parsed && (
+        {false && parsed && (
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-1 border p-2 rounded">
               <h4 className="font-semibold">Inputs</h4>
